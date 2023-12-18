@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, reactive } from 'vue'
+import { ref, onMounted, watch, reactive, provide } from 'vue'
 import Header from './components/Header.vue'
 import CardList from './components/CardList.vue'
 import Drawer from './components/Drawer.vue'
@@ -12,6 +12,47 @@ const filters = reactive({
   searchQuery: ''
 })
 
+const fetchFavorites = async () => {
+  try {
+    const { data: favorites } = await axios.get(`https://116d2d4d9a1012c8.mokky.dev/favorites`)
+    arrCards.value = arrCards.value.map((item) => {
+      const favorite = favorites.find((favorite) => favorite.parentId === item.id)
+      if (!favorite) {
+        return item
+      }
+      return {
+        ...item,
+        isFavorite: true,
+        favoritedId: favorite.id
+      }
+    })
+  } catch (e) {
+    console.log(e)
+  }
+}
+
+const addToFavorite = async (item) => {
+  console.log(item.isFavorite)
+  try {
+    if (!item.isFavorite) {
+      const obj = {
+        parentId: item.id
+      }
+      item.isFavorite = true
+
+      const { data } = await axios.post(`https://116d2d4d9a1012c8.mokky.dev/favorites`, obj)
+      item.favoriteId = data.id
+      console.log(item)
+    } else {
+      await axios.delete(`https://116d2d4d9a1012c8.mokky.dev/favorites/${item.favoriteId}`)
+      item.isFavorite = false
+      item.favoriteId = null
+    }
+  } catch (e) {
+    console.log(e)
+  }
+}
+
 const fetchitems = async () => {
   try {
     const params = {
@@ -21,15 +62,25 @@ const fetchitems = async () => {
       params.title = `*${filters.searchQuery}*`
     }
     const { data } = await axios.get(`https://116d2d4d9a1012c8.mokky.dev/card`, { params })
-    arrCards.value = data
+    arrCards.value = data.map((card) => ({
+      ...card,
+      isFavorite: false,
+      favoritedId: null,
+      isAdded: false
+    }))
   } catch (e) {
     console.log(e)
   }
 }
 
-onMounted(fetchitems)
+onMounted(() => {
+  fetchitems()
+  fetchFavorites()
+})
 
 watch(filters, fetchitems)
+
+provide('addToFavorite', addToFavorite)
 
 const onChangeSelect = (e) => {
   filters.sortBy = e.target.value
