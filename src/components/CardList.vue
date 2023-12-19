@@ -5,7 +5,8 @@ import Card from './Card.vue'
 defineProps({
   items: Array
 })
-const addToFavorite = inject('addToFavorite')
+const { addToFavorite } = inject('addToFavorite')
+const emit = defineEmits(['handleClickCart'])
 </script>
 
 <template>
@@ -16,7 +17,9 @@ const addToFavorite = inject('addToFavorite')
       :title="item.title"
       :imageUrl="item.imageUrl"
       :price="item.price"
+      :isAdded="item.isAdded"
       :onClickFavorite="() => addToFavorite(item)"
+      :onClickAdd="() => emit('handleClickCart', item)"
       :isFavorite="item.isFavorite"
     />
   </div>

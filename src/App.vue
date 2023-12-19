@@ -6,11 +6,41 @@ import Drawer from './components/Drawer.vue'
 import axios from 'axios'
 
 const arrCards = ref([])
+const card = ref([])
+
+const drawerOpen = ref(false)
+
+const closeDrawer = () => {
+  drawerOpen.value = false
+}
+
+const openDrawer = () => {
+  drawerOpen.value = true
+}
 
 const filters = reactive({
   sortBy: 'title',
   searchQuery: ''
 })
+
+const addToCart = (item) => {
+  card.value.push(item)
+  item.isAdded = true
+}
+
+const removeFromCart = (item) => {
+  card.value.splice(card.value.indexOf(item), 1)
+  item.isAdded = false
+}
+
+const handleClickCart = (item) => {
+  if (!item.isAdded) {
+    addToCart(item)
+  } else {
+    removeFromCart(item)
+  }
+  console.log(card)
+}
 
 const fetchFavorites = async () => {
   try {
@@ -32,7 +62,6 @@ const fetchFavorites = async () => {
 }
 
 const addToFavorite = async (item) => {
-  console.log(item.isFavorite)
   try {
     if (!item.isFavorite) {
       const obj = {
@@ -81,6 +110,13 @@ onMounted(() => {
 watch(filters, fetchitems)
 
 provide('addToFavorite', addToFavorite)
+provide('cart', {
+  card,
+  openDrawer,
+  closeDrawer,
+  addToCart,
+  removeFromCart
+})
 
 const onChangeSelect = (e) => {
   filters.sortBy = e.target.value
@@ -91,9 +127,9 @@ const onChangeSearchInput = (e) => {
 }
 </script>
 <template>
-  <!-- <Drawer /> -->
+  <Drawer v-if="drawerOpen" />
   <div class="bg-white w-4/5 m-auto rounded-xl shadow-xl mt-14">
-    <Header />
+    <Header @openDrawer="openDrawer" />
     <div class="p-10 flex justify-between items-center">
       <h2 class="text-3xl font-bold">Все кросовки</h2>
       <select @change="onChangeSelect" class="py-2 px-3 border rounded-xl">
@@ -111,6 +147,6 @@ const onChangeSearchInput = (e) => {
         />
       </div>
     </div>
-    <CardList :items="arrCards" />
+    <CardList :items="arrCards" @handle-click-cart="handleClickCart" />
   </div>
 </template>
