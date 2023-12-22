@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, reactive, provide } from 'vue'
+import { ref, onMounted, watch, reactive, provide, computed } from 'vue'
 import Header from './components/Header.vue'
 import CardList from './components/CardList.vue'
 import Drawer from './components/Drawer.vue'
@@ -7,8 +7,16 @@ import axios from 'axios'
 
 const arrCards = ref([])
 const card = ref([])
-
 const drawerOpen = ref(false)
+const isCreatingOrder = ref(false)
+
+const totalPrice = computed(() => card.value.reduce((acc, item) => acc + item.price, 0))
+
+const taxPrice = computed(() => Math.round(totalPrice.value * 5) / 100)
+
+const cartIsEmpty = computed(() => card.value.length === 0)
+
+const cartButtonDisabled = computed(() => isCreatingOrder.value || cartIsEmpty.value)
 
 const closeDrawer = () => {
   drawerOpen.value = false
@@ -22,6 +30,23 @@ const filters = reactive({
   sortBy: 'title',
   searchQuery: ''
 })
+
+const createOrder = async () => {
+  try {
+    isCreatingOrder.value = true
+    const { data } = await axios.post(`https://116d2d4d9a1012c8.mokky.dev/orders`, {
+      items: card.value,
+      totalPrice: totalPrice.value
+    })
+    console.log(data)
+    card.value = []
+    return data
+  } catch (e) {
+    console.log(e)
+  } finally {
+    isCreatingOrder.value = false
+  }
+}
 
 const addToCart = (item) => {
   card.value.push(item)
@@ -39,7 +64,6 @@ const handleClickCart = (item) => {
   } else {
     removeFromCart(item)
   }
-  console.log(card)
 }
 
 const fetchFavorites = async () => {
@@ -71,7 +95,6 @@ const addToFavorite = async (item) => {
 
       const { data } = await axios.post(`https://116d2d4d9a1012c8.mokky.dev/favorites`, obj)
       item.favoriteId = data.id
-      console.log(item)
     } else {
       await axios.delete(`https://116d2d4d9a1012c8.mokky.dev/favorites/${item.favoriteId}`)
       item.isFavorite = false
@@ -108,6 +131,12 @@ onMounted(() => {
 })
 
 watch(filters, fetchitems)
+watch(card, () => {
+  arrCards.value = arrCards.value.map((card) => ({
+    ...card,
+    isAdded: false
+  }))
+})
 
 provide('addToFavorite', addToFavorite)
 provide('cart', {
@@ -127,9 +156,15 @@ const onChangeSearchInput = (e) => {
 }
 </script>
 <template>
-  <Drawer v-if="drawerOpen" />
+  <Drawer
+    v-if="drawerOpen"
+    :total-price="totalPrice"
+    :tax-price="taxPrice"
+    @create-order="createOrder"
+    :button-disabled="cartButtonDisabled"
+  />
   <div class="bg-white w-4/5 m-auto rounded-xl shadow-xl mt-14">
-    <Header @openDrawer="openDrawer" />
+    <Header @openDrawer="openDrawer" :total-price="totalPrice" />
     <div class="p-10 flex justify-between items-center">
       <h2 class="text-3xl font-bold">Все кросовки</h2>
       <select @change="onChangeSelect" class="py-2 px-3 border rounded-xl">
