@@ -4,18 +4,16 @@ import Header from './components/Header.vue'
 import CardList from './components/CardList.vue'
 import Drawer from './components/Drawer.vue'
 import axios from 'axios'
-
+// Все Кросовки
 const arrCards = ref([])
+// Кросовки в корзине
 const card = ref([])
 const drawerOpen = ref(false)
 const isCreatingOrder = ref(false)
 
 const totalPrice = computed(() => card.value.reduce((acc, item) => acc + item.price, 0))
-
 const taxPrice = computed(() => Math.round(totalPrice.value * 5) / 100)
-
 const cartIsEmpty = computed(() => card.value.length === 0)
-
 const cartButtonDisabled = computed(() => isCreatingOrder.value || cartIsEmpty.value)
 
 const closeDrawer = () => {
@@ -38,7 +36,6 @@ const createOrder = async () => {
       items: card.value,
       totalPrice: totalPrice.value
     })
-    console.log(data)
     card.value = []
     return data
   } catch (e) {
@@ -125,9 +122,16 @@ const fetchitems = async () => {
   }
 }
 
-onMounted(() => {
-  fetchitems()
-  fetchFavorites()
+onMounted(async () => {
+  const localCards = localStorage.getItem('card')
+  card.value = localCards ? JSON.parse(localCards) : []
+  await fetchitems()
+  await fetchFavorites()
+
+  arrCards.value = arrCards.value.map((item) => ({
+    ...item,
+    isAdded: card.value.some((cardItem) => cardItem.id === item.id)
+  }))
 })
 
 watch(filters, fetchitems)
@@ -137,6 +141,16 @@ watch(card, () => {
     isAdded: false
   }))
 })
+
+watch(
+  card,
+  () => {
+    localStorage.setItem('card', JSON.stringify(card.value))
+  },
+  {
+    deep: true
+  }
+)
 
 provide('addToFavorite', addToFavorite)
 provide('cart', {
